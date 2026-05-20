@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "@google/genai": "^2.4.0",
+    "dotenv": "^17.4.2",
+    "zca-js": "^2.1.2"
+  }
+}
