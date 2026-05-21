@@ -57,7 +57,7 @@ api.listener.on("message", (message) => { // "message" is event when someone sen
       await api.sendMessage(
         { msg: "Sorry, I couldn't reply right now. Please try again."},
         message.threadId,
-        ThreadType
+        threadType
       );
     }
   })();
@@ -65,4 +65,3 @@ api.listener.on("message", (message) => { // "message" is event when someone sen
 
 // start listening
 api.listener.start();
-
