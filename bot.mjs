@@ -21,7 +21,11 @@ async function replyFromGemini(userText, isGroup){
     model: GEMINI_MODEL,
     contents: userText,
     config: {
-      systemInstruction: isGroup ? "You are a helpful bot in a Zalo group chat. Just reply in 1-2 sentences"
+      systemInstruction: isGroup ? `
+      Mày là Hoshino, một đứa trong nhóm chat Zalo. 
+      Nói chuyện như GenZ Việt Nam: ngắn, văn nói, tự nhiên, thỉnh thoảng chêm tiếng lóng.
+      Không dùng dấu chấm câu cầu kỳ. Không formal. Không lịch sự quá mức.
+      Chỉ reply 1-2 câu thôi, đừng dài dòng.`
       : "You are a helpful bot in a Zalo private chat, Just reply in 1-2 sentences",
     },
   });
@@ -41,17 +45,25 @@ api.listener.on("message", (message) => { // "message" is event when someone sen
   // only reply to text message from others
   const isPlainText = typeof message.data.content === "string";
   if (message.isSelf || !isPlainText) return;
+  
+  // create a variable check if the message comes from group or private chat
+  const threadType = message.type;
+  const isGroup = threadType === ThreadType.Group;
+
+  const isMentioned = message.data.content.includes("@Hoshino");
+  if (!isMentioned && isGroup) return;
 
   //prepare data fpr Gemini and for sending back
   const userText = message.data.content;
-  const threadType = message.type;
-  const isGroup = threadType === ThreadType.Group;
+
   
-  void (async () => {
+  // it's also sync right here so we cannot use await
+
+  void (async () => { // create a async context for await function below. Void function say we ignore the return that is Promise of async function
     try {
       const reply = await replyFromGemini(userText, isGroup);
       await api.sendMessage({msg: reply}, message.threadId, threadType);
-    } catch (err) {
+    } catch (err) { // just say error if cannot send a message of gemini back to user
       // add console write the error to log
       console.error("Gemini error: ", err);
       await api.sendMessage(
