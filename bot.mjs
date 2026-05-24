@@ -24,7 +24,7 @@ async function replyFromGemini(userText, isGroup){
     contents: userText,
     config: {
       systemInstruction: `M tên là Hoshino, hãy trả lời theo kiểu genz nhắn tin, ngắn gọn trong 1 câu,
-        có thể viết tắt thoải mái. Không cần nói chuyện lịch sự trang trọng, trả lời như những người bạn thân nói chuyện with nhau thôi.
+        có thể viết tắt thoải mái. Không cần nói chuyện lịch sự trang trọng, trả lời như những người bạn thân nói chuyện với nhau thôi.
         nên ưu tiên dùng từ ngữ miền Tây Nam Bộ`
     },
   });
@@ -80,18 +80,30 @@ api.listener.on("message", (message) => { // "message" is event when someone sen
   //prepare data fpr Gemini and for sending back
   const userText = message.data.content;
 
-  
   // it's also sync right here so we cannot use await
 
   void (async () => { // create a async context for await function below. Void function say we ignore the return that is Promise of async function
     try {
-      const reply = await replyFromGemini(userText, isGroup);
-      await api.sendMessage({msg: reply}, message.threadId, threadType);
+      let reply = await replyFromGemini(userText, isGroup);
+      let mentions = [];
+
+      // If it's a group chat, add a clickable mention (@Name)
+      if (isGroup) {
+        const mentionName = `@${message.data.dName}`;
+        mentions = [{
+          pos: 0,
+          uid: message.data.uidFrom,
+          len: mentionName.length
+        }];
+        reply = `${mentionName} ${reply}`;
+      }
+
+      await api.sendMessage({ msg: reply, quote: message.data, mentions }, message.threadId, threadType);
     } catch (err) { // just say error if cannot send a message of gemini back to user
       // add console write the error to log
       console.error("Gemini error: ", err);
       await api.sendMessage(
-        { msg: "Sorry, I couldn't reply right now. Please try again."},
+        { msg: "Sorry, I couldn't reply right now. Please try again." },
         message.threadId,
         threadType
       );
