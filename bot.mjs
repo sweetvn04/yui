@@ -1,10 +1,12 @@
 import { GoogleGenAI } from "@google/genai"
 import { Zalo, ThreadType} from "zca-js"
 import "dotenv/config"
+import fs from "node:fs"
 
 // reading the env file
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const GEMINI_MODEL = "gemma-4-26b-a4b-it"
+const SESSION_FILE = "session.json";
 
 // check apikey working?
 if (!GEMINI_API_KEY) {
@@ -21,12 +23,9 @@ async function replyFromGemini(userText, isGroup){
     model: GEMINI_MODEL,
     contents: userText,
     config: {
-      systemInstruction: isGroup ? `
-      Mày là Hoshino, một đứa trong nhóm chat Zalo. 
-      Nói chuyện như GenZ Việt Nam: ngắn, văn nói, tự nhiên, thỉnh thoảng chêm tiếng lóng.
-      Không dùng dấu chấm câu cầu kỳ. Không formal. Không lịch sự quá mức.
-      Chỉ reply 1-2 câu thôi, đừng dài dòng.`
-      : "You are a helpful bot in a Zalo private chat, Just reply in 1-2 sentences",
+      systemInstruction: `M tên là Hoshino, hãy trả lời theo kiểu genz nhắn tin, ngắn gọn trong 1 câu,
+        có thể viết tắt thoải mái. Không cần nói chuyện lịch sự trang trọng, trả lời như những người bạn thân nói chuyện with nhau thôi.
+        nên ưu tiên dùng từ ngữ miền Tây Nam Bộ`
     },
   });
   
@@ -37,7 +36,32 @@ async function replyFromGemini(userText, isGroup){
 
 // login to zalo
 const zalo = new Zalo();
-const api = await zalo.loginQR(); // the object api will handle all things after
+let api;
+
+if (fs.existsSync(SESSION_FILE)) {
+  try {
+    const session = JSON.parse(fs.readFileSync(SESSION_FILE, "utf-8"));
+    console.log("Đang đăng nhập bằng session cũ...");
+    api = await zalo.login(session);
+    console.log("Đăng nhập thành công bằng session!");
+  } catch (err) {
+    console.error("Session hết hạn hoặc lỗi, yêu cầu quét QR mới:", err.message);
+    api = await zalo.loginQR();
+  }
+} else {
+  console.log("Chưa có session, vui lòng quét mã QR để đăng nhập.");
+  api = await zalo.loginQR();
+}
+
+// Save session for next time
+const ctx = api.getContext();
+const sessionData = {
+  imei: ctx.imei,
+  cookie: ctx.cookie.serializeSync(),
+  userAgent: ctx.userAgent,
+};
+fs.writeFileSync(SESSION_FILE, JSON.stringify(sessionData, null, 2));
+console.log("Đã lưu session vào", SESSION_FILE);
 
 // register an event handle when a message coming
 // (message) => will run every time when a message arrive
